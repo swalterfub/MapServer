@@ -1276,6 +1276,47 @@ static int msLoadProjectionStringEPSGLike(projectionObj *p, const char *value,
 }
 
 /************************************************************************/
+/*                     msLoadProjectionStringIAU2015                   */
+/************************************************************************/
+
+static int msLoadProjectionStringIAU2015(projectionObj *p, const char *value,
+                                          const char* pszPrefix,
+                                          int bFollowEPSGAxisOrder)
+{
+    size_t buffer_size = 0;
+    char *init_string =  NULL;
+    const char *code;
+    const char *next_sep;
+    size_t prefix_len;
+
+    prefix_len = strlen(pszPrefix);
+    if( strncasecmp(value, pszPrefix, prefix_len) != 0 )
+        return -1;
+
+    code = value + prefix_len;
+    next_sep = strchr(code, pszPrefix[prefix_len-1]);
+    if( next_sep != NULL )
+        code = next_sep + 1;
+
+    buffer_size = 13 + strlen(code) + 1;
+    init_string = (char*)msSmallMalloc(buffer_size);
+
+    /* translate into PROJ.4 format. */
+    snprintf( init_string, buffer_size, "init=IAU_2015:%s", code );
+
+    p->args = (char**)msSmallMalloc(sizeof(char*) * 2);
+    p->args[0] = init_string;
+    p->numargs = 1;
+
+    if( bFollowEPSGAxisOrder && msIsAxisInverted(atoi(code))) {
+      p->args[1] = msStrdup("+epsgaxis=ne");
+      p->numargs = 2;
+    }
+
+    return 0;
+}
+
+/************************************************************************/
 /*                     msLoadProjectionStringCRSLike                    */
 /************************************************************************/
 
@@ -1386,6 +1427,7 @@ int msLoadProjectionString(projectionObj *p, const char *value)
     p->args = (char**)msSmallMalloc(sizeof(char*));
     p->args[0] = msStrdup(value);
     p->numargs = 1;
+  } else if (msLoadProjectionStringIAU2000(p, value, "IAU_2015:", MS_FALSE) == 0) {
   } else if (msLoadProjectionStringEPSGLike(p, value, "EPSG:", MS_FALSE) == 0 ) {
    /* Assume lon/lat ordering. Use msLoadProjectionStringEPSG() if wanting to follow EPSG axis */
   } else if (msLoadProjectionStringEPSGLike(p, value, "urn:ogc:def:crs:EPSG:", MS_TRUE) == 0 ) {
